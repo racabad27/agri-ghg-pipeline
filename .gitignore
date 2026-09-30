@@ -1,0 +1,34 @@
+# Secrets (only .env.example is committed)
+.env
+
+
+#ignore all files in the data and outputs directories except for .gitkeep files 
+#Data production will be ignored since the pipeline will create it anyways, while .gitkeep files will be used to keep the directories in the repo.
+data/raw/*
+data/staging/*
+data/curated/*
+!data/raw/.gitkeep
+!data/staging/.gitkeep
+!data/curated/.gitkeep
+outputs/*
+!outputs/.gitkeep
+logs/
+
+# For the Python (Excluding environment files and caches)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Editors and operating systems (Less mess in the repo)
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Airflow files created when running outside Docker
+airflow.cfg
+airflow.db
+*.pid
