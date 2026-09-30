@@ -5,4 +5,3 @@ FROM apache/airflow:3.3.2
 # upgrading or downgrading Airflow by accident while it installs our requirements.
 COPY requirements.txt /requirements.txt
 RUN pip install --no-cache-dir "apache-airflow==3.3.2" -r /requirements.txt
-.dockerignore
