@@ -1,0 +1,11 @@
+# Indicated the Files that the Docker does not need when building the image 
+.git
+.env
+data
+logs
+outputs
+notebooks
+__pycache__
+.pytest_cache
+.venv
+venv
