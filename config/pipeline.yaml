@@ -1,0 +1,82 @@
+# Pipeline settings
+
+project:
+  name: agri-ghg-pipeline
+
+http:
+  timeout_seconds: 120
+  retries: 3             # attempts per request before giving up
+  backoff_seconds: 10    # wait 10s, then 20s, ... between attempts
+  user_agent: "agri-ghg-pipeline/DSS150P"
+
+edgar:
+  edition: 2026
+  # EDGAR puts the edition year in the file name, so the link changes every year.
+  url_template: "https://edgar.jrc.ec.europa.eu/booklet/EDGAR_{edition}_GHG_booklet_{edition}.xlsx"
+  sheet: GHG_by_sector_and_country
+  first_year: 1970
+  # 2023-2025 are EDGAR "Fast-Track" estimates, revised in the next edition (EDGAR 2026 booklet, footnote 17:
+  # https://edgar.jrc.ec.europa.eu/booklet/GHG_emissions_of_all_world_countries_booklet_2026report.pdf).
+  fast_track_from_year: 2023
+  sectors:
+    - Agriculture
+    - Buildings
+    - Fuel Production
+    - Industrial Combustion
+    - Power Industry
+    - Processes
+    - Transport
+    - Waste
+  # EDGAR "Substance" label -> our short gas code
+  substances:
+    CO2: CO2
+    GWP_100_AR5_CH4: CH4
+    GWP_100_AR5_N2O: N2O
+    GWP_100_AR5_F-gases: F-gases
+  aggregate_codes: ["GLOBAL TOTAL", "EU27"]   # totals, not countries
+  international_codes: ["AIR", "SEA"]        # international aviation and shipping
+
+worldbank:
+  base_url: "https://api.worldbank.org/v2/country/all/indicator"
+  indicator: SP.POP.TOTL        # total population
+  per_page: 1000                # records per API page; we loop over all pages
+  first_year: 1960
+  # World Bank codes that are real places but not ISO 3166 country codes
+  extra_country_codes:
+    XKX: Kosovo
+    CHI: Channel Islands
+
+faostat:
+  url: "https://bulks-faostat.fao.org/production/Emissions_Totals_E_All_Data_(Normalized).zip"
+  source: FAO TIER 1                  # FAO's own estimates (the file also has UNFCCC country reports)
+  element: Emissions (CO2eq) (AR5)    # all gases in CO2-equivalent, GWP-100 from IPCC AR5 (like EDGAR)
+  unit: kt                            # kilotonnes; we convert to Mt (divide by 1,000)
+  first_year: 2000                    # from 2000 on, no former states (USSR, Yugoslavia, ...) remain
+  world_area_code: 5000               # area codes >= 5000 are the world and regions (sums of countries)
+  china_area_code: 351                # "China" is also a sum: mainland + Hong Kong + Macao + Taiwan
+  china_parts: [41, 96, 128, 214]
+  projection_flag: F                  # the years for 2030 and 2050 are projections, not data but will be seperated somewhere else.
+  activities:
+    5058: {name: Enteric fermentation, group: Livestock}
+    5059: {name: Manure management, group: Livestock}
+    5062: {name: Manure applied to soils, group: Livestock}
+    5063: {name: Manure left on pasture, group: Livestock}
+    5060: {name: Rice cultivation, group: Crops}
+    5061: {name: Synthetic fertilizers, group: Crops}
+    5064: {name: Crop residues, group: Crops}
+    5066: {name: Burning crop residues, group: Crops}
+  subtotal_items: [5084, 5085]        # FAOSTAT's own subtotals, used to check the 8 activities
+
+curated:
+  focus_sector: Agriculture
+  focus_gases: [CO2, CH4, N2O]
+
+validation:
+  min_edgar_rows: 250000              # all sectors, long format (the 2026 edition has ~266,500)
+  min_worldbank_rows: 15000           # population records after removing empty values
+  min_faostat_rows: 2000000           # all FAOSTAT rows, long format (the 2025 release has 2,500,090)
+  min_population_coverage_pct: 99.0   # share of emissions that must have a population
+  max_t_per_person: 100               # sanity limit for tonnes CO2eq per person
+  min_faostat_coverage_pct: 99.5      # share of FAOSTAT emissions that must match an EDGAR country
+  max_edgar_faostat_gap_pct: 15       # world totals of the two sources must agree within 15%
+  faostat_tolerance_kt: 1.0           # rounding allowed when FAOSTAT parts are compared with its totals
