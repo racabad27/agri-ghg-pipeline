@@ -6,7 +6,7 @@ from datetime import date
 
 import pandas as pd
 
-from src.config import STAGING_DIR, get_settings
+from src.config import CURATED_DIR, STAGING_DIR, get_settings
 from src.validation.checks import (
     CheckResult, expect_between, expect_columns, expect_not_null, expect_row_count_at_least,
     expect_true, expect_unique, expect_values_in, run_checks,
@@ -148,6 +148,78 @@ def validate_faostat_staging() -> dict:
     return run_checks("faostat_staging", results)
 
 
+# ------------------------------------------------------------------ curated layer
+def validate_curated() -> dict:
+    v = get_settings()["validation"]
+    country_year = pd.read_parquet(CURATED_DIR / "agri_country_year.parquet")
+    by_gas = pd.read_parquet(CURATED_DIR / "agri_emissions_by_gas.parquet")
+    dim_country = pd.read_parquet(CURATED_DIR / "dim_country.parquet")
+
+    # Population coverage: share of emissions (years that have population data) with a population value
+    with_pop_years = country_year.loc[country_year["population"].notna(), "year"].unique()
+    in_scope = country_year[country_year["year"].isin(with_pop_years)]
+    coverage = 100 * in_scope.loc[in_scope["population"].notna(), "total_mt"].sum() / in_scope["total_mt"].sum()
+
+    # Shares of world emissions must add up to 100% every year
+    share_sums = country_year.groupby("year")["share_of_world_pct"].sum()
+    share_gap = float((share_sums - 100).abs().max())
+
+    unknown_countries = sorted(set(by_gas["country_code"]) - set(dim_country["country_code"]))
+    results = [
+        expect_unique(country_year, ["country_code", "year"]),
+        expect_unique(by_gas, ["country_code", "gas", "year"]),
+        expect_not_null(country_year, ["country_code", "year", "total_mt", "share_of_world_pct"]),
+        expect_values_in(by_gas, "gas", get_settings()["curated"]["focus_gases"]),
+        expect_true("referential integrity: every country is in dim_country", not unknown_countries,
+                    f"unknown codes: {unknown_countries[:10]}"),
+        expect_between(country_year, "total_mt", min_value=0),
+        expect_between(country_year, "t_per_person", min_value=0, max_value=v["max_t_per_person"]),
+        expect_true(f"population coverage >= {v['min_population_coverage_pct']}% of emissions",
+                    coverage >= v["min_population_coverage_pct"], f"coverage {coverage:.2f}%"),
+        expect_true("shares of world emissions add up to 100% each year", share_gap < 1e-6,
+                    f"largest gap {share_gap:.2e} percentage points"),
+    ]
+    return run_checks("curated", results)
+
+
+def validate_faostat_curated() -> dict:
+    from src.transform.curated_faostat import read_faostat_scope
+
+    f, v = get_settings()["faostat"], get_settings()["validation"]
+    by_activity = pd.read_parquet(CURATED_DIR / "agri_emissions_by_activity.parquet")
+    comparison = pd.read_parquet(CURATED_DIR / "edgar_vs_faostat.parquet")
+    dim_country = pd.read_parquet(CURATED_DIR / "dim_country.parquet")
+
+    # Coverage: share of FAOSTAT's country emissions (latest year) that reached the curated table
+    scope = read_faostat_scope()
+    latest = int(scope["year"].max())
+    kept_kt = 1000 * by_activity.loc[by_activity["year"] == latest, "emissions_mt_co2eq"].sum()
+    coverage = 100 * kept_kt / scope.loc[scope["year"] == latest, "value"].sum()
+
+    # The two sources must roughly agree on the world total (a unit or mapping error would not)
+    world = comparison.groupby("year")[["edgar_total_mt", "faostat_total_mt"]].sum()
+    world_gap = float((100 * (world["faostat_total_mt"] - world["edgar_total_mt"]).abs()
+                       / world["edgar_total_mt"]).max())
+
+    unknown_countries = sorted(set(by_activity["country_code"]) - set(dim_country["country_code"]))
+    results = [
+        expect_unique(by_activity, ["country_code", "activity_code", "year"]),
+        expect_not_null(by_activity, ["country_code", "activity_code", "activity", "activity_group", "year",
+                                      "emissions_mt_co2eq"]),
+        expect_values_in(by_activity, "activity_code", list(f["activities"])),
+        expect_between(by_activity, "emissions_mt_co2eq", min_value=0),
+        expect_true("referential integrity: every country is in dim_country", not unknown_countries,
+                    f"unknown codes: {unknown_countries[:10]}"),
+        expect_unique(comparison, ["country_code", "year"]),
+        expect_true(f"FAOSTAT coverage >= {v['min_faostat_coverage_pct']}% of emissions ({latest})",
+                    coverage >= v["min_faostat_coverage_pct"], f"coverage {coverage:.3f}%"),
+        expect_true(f"EDGAR and FAOSTAT world totals agree within {v['max_edgar_faostat_gap_pct']}%",
+                    world_gap <= v["max_edgar_faostat_gap_pct"],
+                    f"largest gap {world_gap:.1f}% over {len(world)} years"),
+    ]
+    return run_checks("curated_faostat", results)
+
+
 if __name__ == "__main__":
     from src.utils.logger import setup_logging
 
@@ -155,4 +227,5 @@ if __name__ == "__main__":
     validate_edgar_staging()
     validate_worldbank_staging()
     validate_faostat_staging()
-
+    validate_curated()
+    validate_faostat_curated()
