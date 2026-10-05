@@ -1,0 +1,16 @@
+wb_code,edgar_code,reason
+SDN,SDN,EDGAR combines Sudan and South Sudan
+SSD,SDN,EDGAR combines Sudan and South Sudan
+SRB,SCG,EDGAR still uses one code for Serbia and Montenegro
+MNE,SCG,EDGAR still uses one code for Serbia and Montenegro
+CUW,ANT,EDGAR labels Curacao with the old Netherlands Antilles code ANT
+FRA,FRA,EDGAR combines France and Monaco
+MCO,FRA,EDGAR combines France and Monaco
+ITA,ITA,EDGAR combines Italy and San Marino (and the Holy See)
+SMR,ITA,EDGAR combines Italy and San Marino (and the Holy See)
+ESP,ESP,EDGAR combines Spain and Andorra
+AND,ESP,EDGAR combines Spain and Andorra
+CHE,CHE,EDGAR combines Switzerland and Liechtenstein
+LIE,CHE,EDGAR combines Switzerland and Liechtenstein
+ISR,ISR,EDGAR combines Israel and Palestine
+PSE,ISR,EDGAR combines Israel and Palestine
