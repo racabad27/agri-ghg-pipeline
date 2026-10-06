@@ -24,7 +24,7 @@ column still has the same type.
 - **Speed:** at about 11,000 rows every format takes milliseconds, so size and correct types matter more
   than speed here. With millions of rows Parquet's advantage grows, especially when only some columns or
   partitions are read.
-- **At scale (FAOSTAT):** the FAOSTAT source arrives as a 325 MB CSV with 2.5 million rows (20 MB zipped).
+- **At scale (FAOSTAT):** the FAOSTAT source arrives as a 364 MB CSV with 2.5 million rows (20 MB zipped).
   In staging the same rows are a 12 MB Parquet file, and the curated step reads only the rows it needs
   (Parquet filters) instead of parsing the whole CSV again.
 - **When we use each:** Parquet between pipeline layers (types, compression, partitions); CSV for people
