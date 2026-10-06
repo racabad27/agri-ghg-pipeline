@@ -32,7 +32,7 @@ flowchart LR
         WDB[("warehouse-db<br/>PostgreSQL 16<br/>schema agri")]
     end
 
-    CONS["Consumers<br/>SQL queries, pgAdmin/DBeaver,<br/>analysis notebook"]
+    CONS["Consumers<br/>SQL queries"]
 
     E --> X
     W --> X

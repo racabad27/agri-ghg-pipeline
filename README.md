@@ -5,14 +5,14 @@
 ``By the time we finish, our pipeline should be able to utilize all three sources for their respective purposes, and perform necessary cleaning and validation in the stated layers of the project (raw - staging - curated). They should also be able to load into postgreSQL , with airflow running and docker compose handling the packaging. 
 
 
-```Pipeline is currently: Still being constructed```
+```Finished```
 
 ## Members of Group Delta 
-**1. Abad, Rolando Alfonso**
+**1. Abad, Rolando Alfonso - (Docker, Airflow, extraction, transformations, validation, load, docs, Ppt)**
 
-**2. Tolentino Feny Lane** 
+**2. Tolentino Feny Lane - (FAOSTAT extraction, warehouse schema, ERD, extraction tests, Powerpoint)** 
 
-**3. Perez, Bienn Jaime**
+**3. Perez, Bienn Jaime - (data flow diagram and presentation)**
 
 
 ## SOURCES USED:
@@ -27,7 +27,7 @@ greenhouse-gas emissions (EDGAR and FAOSTAT) and population (World Bank), cleans
 (raw -> staging -> curated), and loads analysis-ready tables into PostgreSQL. Apache Airflow runs it and
 Docker Compose packages it.
 
----
+
 
 ## 1. Problem statement
 
@@ -75,7 +75,7 @@ so this needs a **pipeline** that re-downloads, re-checks and reloads the data o
 - **Out of scope:** other EDGAR sectors and the rest of the FAOSTAT file (energy, land use, food processing, ...);
   they are kept in staging but not curated. Land use / forestry (LULUCF).
 
-## 5. Data sources
+## 4. Data sources
 
 | Source | Provider | Type / format | Retrieval | License |
 |---|---|---|---|---|
@@ -87,7 +87,7 @@ Full details (links, update frequency, volume, limitations): [docs/source_invent
 Profiling reports: [EDGAR](docs/profiling/edgar_profile.md), [World Bank](docs/profiling/worldbank_profile.md),
 [FAOSTAT](docs/profiling/faostat_profile.md).
 
-## 6. Architecture and tech stack
+## 5. Architecture and tech stack
 
 ```mermaid
 flowchart LR
@@ -117,7 +117,7 @@ Docker Compose · Git/GitHub
 Detailed diagram and tool choices: [docs/architecture.md](docs/architecture.md) ·
 lineage: [docs/data_flow.md](docs/data_flow.md) · database: [docs/erd.md](docs/erd.md).
 
-## 7. Repository structure
+## 6. Repository structure
 
 ```
 agri-ghg-pipeline/
@@ -146,12 +146,12 @@ agri-ghg-pipeline/
 └── outputs/                    # validation and comparison reports (not committed)
 ```
 
-## 8. Setup
+## 7. Setup
 
 **Prerequisites:** Git, Docker Desktop (give Docker at least **4 GB of memory**, 2 CPUs, 10 GB disk), internet.
 
 ```bash
-git clone https://github.com/<your-team>/agri-ghg-pipeline.git
+git clone https://github.com/racabad27/agri-ghg-pipeline.git
 cd agri-ghg-pipeline
 cp .env.example .env          # Windows PowerShell: Copy-Item .env.example .env
 ```
@@ -186,7 +186,7 @@ To create them by hand: `docker compose exec airflow-scheduler python -m src.loa
 
 Stop: `docker compose down` · full reset including databases: `docker compose down -v`.
 
-## 9. Run the pipeline
+## 8. Run the pipeline
 
 **Airflow UI (recommended):** open http://localhost:8080, log in, find `agri_emissions_pipeline`
 and switch it **on**. Because the DAG is scheduled monthly, Airflow starts this month's run right away.
@@ -224,7 +224,7 @@ Log files are also in `logs/`.
 **Profile the raw sources** (writes the reports in `docs/profiling/`):
 `docker compose exec airflow-scheduler python scripts/profile_sources.py`.
 
-## 10. Outputs and where to find them
+## 9. Outputs and where to find them
 
 | Output | Location |
 |---|---|
@@ -244,7 +244,7 @@ Query the warehouse:
 docker compose exec warehouse-db psql -U agri -d agri_dw -f 02_queries.sql
 ```
 
-## 11. Data quality and validation
+## 10. Data quality and validation
 
 A validation task runs after every layer and writes a JSON report to `outputs/validation/` (the latest run).
 If a check fails, the task turns red at once, the tasks after it do not run, and nothing new reaches the
@@ -264,7 +264,7 @@ referential integrity, coverage, cross-source agreement. The download steps also
 test + expected sheet or data file). Rows that cannot be used are never dropped silently: FAOSTAT areas without
 an EDGAR code and impossible values (negative emissions) are written to `outputs/reports/` with the reason.
 
-## 12. Rerun safety (idempotency)
+## 11. Rerun safety (idempotency)
 
 Running the pipeline twice gives the same result, never duplicates:
 
@@ -282,7 +282,7 @@ docker compose exec warehouse-db psql -U agri -d agri_dw -c "SELECT COUNT(*) FRO
 docker compose exec warehouse-db psql -U agri -d agri_dw -c "SELECT batch_id, table_name, rows_upserted FROM agri.load_audit ORDER BY audit_id;"
 ```
 
-## 13. Partitioning and file formats
+## 12. Partitioning and file formats
 
 - **Partitioning:** EDGAR staging data is saved as Parquet **partitioned by sector** (8 folders). Staging
   keeps all 8 sectors so it stays faithful to the source, but the curated step needs only agriculture: it reads
@@ -295,11 +295,11 @@ docker compose exec warehouse-db psql -U agri -d agri_dw -c "SELECT batch_id, ta
   Demo: `docker compose exec airflow-scheduler python scripts/read_partition_demo.py`.
 - **Formats:** sources arrive as Excel (EDGAR), JSON (World Bank) and a zipped CSV (FAOSTAT) and are kept that
   way in raw. From staging onward we use **Parquet** because it keeps column types, is compressed and supports
-  partitions and filters: FAOSTAT's 325 MB CSV becomes a 12 MB Parquet file. The `compare_formats` task writes
+  partitions and filters: FAOSTAT's is about 364.0 MB CSV becomes a 12 MB Parquet file. The `compare_formats` task writes
   the main table as CSV, JSON and Parquet and compares size, write/read time and type preservation
   ([results](docs/format_comparison.md)).
 
-## 14. Tests
+## 13. Tests
 
 ```bash
 docker compose exec airflow-scheduler pytest -q
@@ -309,7 +309,7 @@ Unit tests cover the cut-off-file checks (Excel and zip), World Bank paging and 
 reshape, both FAOSTAT layouts, country codes and flags, matching FAOSTAT areas to EDGAR countries, rejected rows,
 population matching for merged countries, the curated calculations and every check function.
 
-## 15. Limitations and assumptions
+## 14. Limitations and assumptions
 
 - EDGAR 2023-2025 values are **fast-track estimates** (`is_estimate = true`) and will be revised.
 - **FAOSTAT ends in 2023** (release of 28 October 2025), so the activity breakdown and the comparison stop there.
@@ -325,7 +325,7 @@ population matching for merged countries, the curated calculations and every che
 - Emissions use **GWP-100 from IPCC AR5** in both EDGAR and FAOSTAT, not the newer AR6 values.
 - The EDGAR link contains the edition year; a new edition means updating `edgar.edition` in `config/pipeline.yaml`.
 
-## 16. Troubleshooting
+## 15. Troubleshooting
 
 | Problem | Fix |
 |---|---|
@@ -340,12 +340,12 @@ population matching for merged countries, the curated calculations and every che
 | World Bank API errors or timeouts | The task retries automatically; if the API is down, trigger again later |
 | Starting completely fresh | `docker compose down -v`, then delete the contents of `data/raw`, `data/staging`, `data/curated` (keep `.gitkeep`) |
 
-## 17. Future improvements
+## 16. Future improvements
 
 - Add FAOSTAT's activity data (animal numbers, rice area, fertiliser use) to explain changes in emissions.
 - Send any form of notification when a task fails (today the failure is logged and shown in the Airflow UI).
 
-## 18. Acknowledgements
+## 17. Acknowledgements
 
 - Data (all CC BY 4.0):
   - EDGAR (Emissions Database for Global Atmospheric Research) Community GHG Database, a collaboration between

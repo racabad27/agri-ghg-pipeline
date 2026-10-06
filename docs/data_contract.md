@@ -22,7 +22,7 @@ contract:
       - World Bank World Development Indicators API, indicator SP.POP.TOTL
   consumers:
     - Policy analysts comparing countries (for example the Philippines and ASEAN neighbours)
-    - Our analysis notebook and SQL reports
+    - SQL queries (sql/02_queries.sql)
   locations:
     file: data/curated/agri_country_year.parquet
     database_table: agri.agri_country_year (PostgreSQL, database agri_dw)
@@ -55,7 +55,7 @@ contract:
     - {rule: "shares add up to 100% every year",                        enforced_by: "validate_curated"}
     - {rule: "database row count = file row count",                     enforced_by: "check_warehouse"}
   change_policy: >
-    Adding a column = minor version (1.1.0). Renaming or removing a column, or changing a type or the
+    Current version right now is eg: 1.0.0. Adding a column = minor version (1.1.0). Renaming or removing a column, or changing a type or the
     grain = major version (2.0.0), announced to consumers first.
   known_limitations:
     - 2023-2025 values are EDGAR fast-track estimates (is_estimate = true) and will be revised.
@@ -80,7 +80,7 @@ contract:
       - FAOSTAT Emissions Totals (FAO), source FAO TIER 1, element Emissions (CO2eq) (AR5)
   consumers:
     - Analysts asking which activities (livestock, rice, fertiliser, ...) drive a country's emissions
-    - Our analysis notebook and SQL reports
+    - SQL queries (sql/02_queries.sql)
   locations:
     file: data/curated/agri_emissions_by_activity.parquet
     database_table: agri.fact_emissions_by_activity (names and groups in agri.dim_activity)
